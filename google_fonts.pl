@@ -29,16 +29,21 @@ my @variant_filter = (qw(regular));
 my $output_css = 0;
 my $verbose = 0;
 my $scan = 0;
+my $popular = 0;
+my $help = 0;
 
 GetOptions (
-    "output=s"  => \@output_filter,
-    "download"  => \$download_files,
-    "variant=s" => \@variant_filter,
-    "css"       => \$output_css,
-    "verbose"   => \$verbose,
-    "scan"      => \$scan,
-    "help|h|?"  => pod2usage( -verbose => 1 ),
-);
+    "output=s"   => \@output_filter,
+    "download"   => \$download_files,
+    "variant=s"  => \@variant_filter,
+    "css"        => \$output_css,
+    "verbose"    => \$verbose,
+    "scan"       => \$scan,
+    "popular:10" => \$popular,
+    "help|h|?"   => \$help,
+) or pod2usage(2);
+
+pod2usage(1) if $help;
 
 if ( not $gfonts_api_key ) {
     die "A Google Fonts API key is required as the environment variable GOOGLE_FONTS_API_KEY.\n";
@@ -146,6 +151,19 @@ sub convert_to_epoch {
     $t->epoch;
 }
 
+sub render {
+    print map {; output($_) } @_;
+
+    if ( $output_css ) {
+        say "===";
+        say css_output(@_);
+    }
+
+    if ( $download_files ) {
+        map {; download_font_files($_) } @_;
+    }
+}
+
 my $gfonts;
 my $name_index;
 my $st = stat($cache);
@@ -162,9 +180,7 @@ else {
     $name_index = load_cache($name_cache);
 }
 
-die "usage: $0 regex1 [regex2 ... regexN]\n" if @ARGV < 1 && not $scan;
-
-if ( ! $scan ) {
+if ( @ARGV > 0 ) {
     my @fonts;
     foreach my $r ( @ARGV ) {
         my $re = qr/$r/;
@@ -174,18 +190,20 @@ if ( ! $scan ) {
                                     grep { /$re/ } keys %{ $name_index };
     }
 
-    say map {; output($_) } @fonts;
-
-    if ( $output_css ) {
-        say "===";
-        say css_output(@fonts);
+    if ( scalar @fonts ) {
+        render(@fonts);
+    }
+    else {
+        say "No results found.";
     }
 
-    if ( $download_files ) {
-        map {; download_font_files($_) } @fonts;
-    }
 }
-else {
+elsif ( $popular ) {
+    my @fonts = map { $gfonts->{items}->[$_] } 0 .. $popular - 1;
+
+    render(@fonts);
+}
+elsif ( $scan ) {
     my @updates;
     push @ARGV, $font_dir;
     for my $dirname ( @ARGV ) { 
@@ -221,6 +239,10 @@ __END__
 =head1 SYNOPSIS
 
     google_fonts.pl --scan /font/dir1 /font/dir2
+
+    or
+
+    google_fonts.pl [options] --popular 15
 
     or
 
@@ -287,6 +309,11 @@ variants.
 Scan (optional given) font folders for web font names and compare the
 on disk time to the lastModified attribute. If the lastModified attribute
 is newer, output a message. By default this scans ~/Library/Fonts.
+
+=item * popular 
+
+Instead of scanning for a specific regex, display the N (default is 10) most 
+popular fonts.
 
 =back
 
