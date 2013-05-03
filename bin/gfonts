@@ -4,6 +4,8 @@ use 5.014;
 
 # ABSTRACT: Google Web Fonts from your terminal
 
+# PODNAME: gfonts
+
 # VERSION
 
 # core modules (in 5.14)
@@ -238,15 +240,15 @@ __END__
 
 =head1 SYNOPSIS
 
-    google_fonts.pl --scan /font/dir1 /font/dir2
+    gfonts --scan /font/dir1 /font/dir2
 
     or
 
-    google_fonts.pl [options] --popular 15
+    gfonts [options] --popular 15
 
     or
 
-    google_fonts.pl [options] regex1 regex2 ... regexN
+    gfonts [options] regex1 regex2 ... regexN
 
 =head1 OPTIONS
 
