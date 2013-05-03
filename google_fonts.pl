@@ -2,6 +2,10 @@
 
 use 5.014;
 
+# ABSTRACT: Google Web Fonts from your terminal
+
+# VERSION
+
 # core modules (in 5.14)
 use HTTP::Tiny;
 use Storable;
@@ -9,8 +13,7 @@ use File::stat;
 use Getopt::Long;
 use Time::Piece;
 use JSON::PP;
-
-use Data::Printer;
+use Pod::Usage;
 
 # defaults
 my $gfonts_api_key = $ENV{GOOGLE_FONTS_API_KEY}; 
@@ -34,7 +37,7 @@ GetOptions (
     "css"       => \$output_css,
     "verbose"   => \$verbose,
     "scan"      => \$scan,
-
+    "help|h|?"  => pod2usage( -verbose => 1 ),
 );
 
 if ( not $gfonts_api_key ) {
@@ -70,21 +73,30 @@ sub css_output {
 sub output {
     my $s = $_[0]->{family};
 
+    if ( $output_filter[0] eq "all" ) {
+        @output_filter = (qw(
+            version
+            lastModified
+            variants
+            subsets
+            files
+            )
+        );
+    }
+
     for my $k ( @output_filter ) {
         my $r = ref $_[0]->{$k};
         if ( $r eq "HASH" ) {
-            $s .= "\n\t$k:";
-            $s .= join "", map { "\n\t\t$_:\n\t\t\t$_[0]->{$k}->{$_}" } keys %{ $_[0]->{$k} };
+            $s .= "\n  $k:";
+            $s .= join "", map { "\n    $_:\n\t    $_[0]->{$k}->{$_}" } keys %{ $_[0]->{$k} };
         }
         elsif ( $r eq "ARRAY" ) {
-            $s .= "\n\t$k: ";
+            $s .= "\n  $k: ";
             $s .= join ", ", @{ $_[0]->{$k} };
-            $s .= "\n";
         }
         else {
-            $s .= "\n\t$k: $_[0]->{$k}";
+            $s .= "\n  $k: $_[0]->{$k}";
         }
-        $s .= "\n";
     }
 
     $s .= "\n";
@@ -205,3 +217,121 @@ else {
 
 exit 0;
 __END__
+
+=head1 SYNOPSIS
+
+    google_fonts.pl --scan /font/dir1 /font/dir2
+
+    or
+
+    google_fonts.pl [options] regex1 regex2 ... regexN
+
+=head1 OPTIONS
+
+=over
+
+=item * output
+
+This option modifies what output is shown. By default, the only thing shown is the
+font family name. The option may be repeated multiple times. Other available fields are:
+
+=over 
+
+=item * files
+
+Show the download urls by weight/variant.
+
+=item * variants
+
+Show the available weights/variant type faces.
+
+=item * version
+
+Show the current font version.
+
+=item * lastModified
+
+Show the last date the font was modified.
+
+=item * subsets
+
+Show the available character sets 
+
+=item * all
+
+Show everything above.
+
+=back
+
+=item * variant
+
+Filter downloads or css output by adding variants. By default the only variant is
+'regular' which is not always available for every font family. This option
+may be given multiple times.
+
+=item * verbose
+
+Show verbose output when downloading font(s).
+
+=item * download
+
+Download matching fonts/variants into the current working directory.
+
+=item * css
+
+Output HTML stylesheet links to STDOUT for matching font families and 
+variants.
+
+=item * scan
+
+Scan (optional given) font folders for web font names and compare the
+on disk time to the lastModified attribute. If the lastModified attribute
+is newer, output a message. By default this scans ~/Library/Fonts.
+
+=back
+
+=head1 DESCRIPTION
+
+This program requires a Google API key for Web Fonts. See 
+L<this page|https://developers.google.com/fonts/docs/developer_api>
+for more details.  Once you have an API key, you must export it
+into your shell environment.
+
+    $ export GOOGLE_FONTS_API_KEY='sekrit'
+
+The program uses the key to get a JSON list of available fonts
+and font metadata, parses it into a Perl data structure and then
+caches the data to disk. If the cache on disk is older than 24 hours, 
+it will get new data, overwriting the old files.
+
+=head2 MINIMUM PERL VERSION
+
+This program B<requires> Perl 5.14 or later. It makes use several
+features and modules added to the perl core as of 5.14.
+
+=head2 IMPLEMENTATION QUIRKS
+
+This implementation focuses fairly exclusively on Mac OS X, but
+I would welcome patches to generalize this code to Linux and/or Windows.
+
+=head1 EXAMPLES
+
+    google_fonts.pl "^Open Sans"
+
+Show all font names that start with the pattern 'Open Sans'
+
+    google_fonts.pl --output all "^Open Sans$"
+
+Find the font that exactly matches 'Open Sans' and
+display all of its metadata.
+
+    google_fonts.pl "^A"
+
+Show all font names that begin with the letter 'A'
+
+    google_fonts.pl --download "^A"
+
+Show all the font names that being with 'A' and download them
+into the current directory.
+
+=cut
