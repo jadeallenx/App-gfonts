@@ -1,4 +1,5 @@
 *.swp
+App-gfonts-*
 blib/
 .build/
 _build/
