@@ -193,7 +193,8 @@ else {
         closedir $dh;
 
         if ( scalar @updates ) {
-            say "These fonts are newer than what's on your disk:";
+            say ( ( scalar @updates == 1 ) ? "This font is" : "These fonts are" 
+                                            . " newer than what's in $dirname:");
             say map {; output($_) } @updates;
         }
         else {
